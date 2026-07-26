@@ -1,4 +1,4 @@
-# Company Brain (Insurance Claims) — Design Spec
+# Sift — Design Spec (Company Brain, Insurance Claims)
 
 **Event:** JacHacks SF 2026 (Founders Inc., Fort Mason — Jul 26, 2026)
 **Track:** Agentic AI
@@ -19,19 +19,19 @@
 ## 2. Scope
 
 **In scope:**
-- Ingest 3 fabricated fixtures: a policy document (coverage terms + exclusions), a claim record, and call notes — with one deliberate coverage conflict planted between two sources.
-- byLLM extraction of each source into graph nodes.
-- A walker that traverses the graph, compares same-topic facts across sources, detects the planted conflict, and decides its next action (answer / flag conflict / draft response / escalate) via a `by llm()` decision step.
-- A draft-response action (e.g., a clarification or claim-decision email) that requires explicit human approval before "sending" (sending is mocked — no real email integration).
-- A minimal chat-style web UI hitting Jac's auto-generated `:pub` walker REST endpoints, plus an "agent trace" panel showing the walker's traversal/decision steps live.
-- One brief, non-interactive note (a config file glance) demonstrating the same engine is domain-agnostic — not a built feature.
+- Ingest fabricated fixtures across source *types* — policy doc, claim record, call notes, and framed as representative of email/Slack/meeting-notes ingestion generally — with one deliberate coverage conflict planted between two sources.
+- byLLM extraction of each source into graph nodes, with a deterministic groundedness check (see §3a).
+- A walker that traverses the graph, compares same-topic facts across sources, detects the planted conflict, and decides its next action (answer / flag conflict / draft response / escalate) via a `by llm()` decision step. This one deep reasoning chain is the entire technical bet — see §3b on why breadth was rejected.
+- A draft-response action (e.g., a clarification email) that requires explicit human approval before "sending" (sending is mocked — no real email integration).
+- Full UI flow (§4a): landing screen → dashboard (2-3 prioritized items) → review screen (live graph traversal + agent trace + click-to-verify source panel + draft/approve).
 
 **Explicitly out of scope:**
-- No domain/problem-picker wizard or onboarding flow.
-- No real CRM/insurance-system/email integration — all data is fixture-based and local.
+- No domain/problem-picker wizard.
+- No real login/signup — a single "Enter" action from the landing screen is enough; no auth logic.
+- No real CRM/insurance-system/email/Slack/calendar integration, and no *separate* mocked action types (no working "send to Slack," "schedule call," "generate report" buttons) — one action type (draft-and-approve) built deep, not five built shallow. Source diversity (Slack/email/meeting-notes) is represented as **labels/icons on fixture data**, not as live integrations.
 - No autonomous auto-send of any drafted action, ever.
 - No multi-user auth, persistence beyond the demo session, or multi-tenant support.
-- No coverage of verticals beyond insurance in the actual demo (mentioned verbally only).
+- No coverage of verticals beyond insurance in the actual demo (mentioned verbally/visually only, via the domain-config aside in §4a).
 
 ## 3. Architecture
 
@@ -72,12 +72,36 @@ Web UI: chat pane (question/answer) + agent trace pane (traversal steps)
 - `by llm()` function delegation with `sem` annotations for extraction, relevance-checking, conflict comparison, and action selection
 - `jac start` auto-exposing a `:pub` walker as a REST endpoint (no hand-rolled routing)
 
+## 3a. Citation Integrity (groundedness guarantee)
+
+An ungrounded citation is worse than no citation — it defeats the product's entire premise. Mechanism:
+1. Extraction `by llm()` is scoped narrowly: locate the relevant span in the source and label its topic. It does **not** paraphrase — the `statement` field is the verbatim excerpt.
+2. A deterministic (non-LLM) substring check runs after extraction: confirm `statement` actually appears in the source text. Fails → re-extract or flag `unverified`. This check cannot hallucinate; it's a string match.
+3. The UI renders the stored quote **directly** — never regenerated at answer/display time. The LLM only writes the narrative wrapper around the citation, never the citation text itself.
+4. **Click-to-verify:** clicking a citation opens the raw source document with the exact matched span highlighted (deterministic string search + highlight, no LLM call).
+5. The conflict *verdict* (an LLM judgment) is a hint; the two raw quotes shown side-by-side are the proof — a user can independently verify the conflict without trusting the verdict.
+
+## 3b. Depth vs. Breadth (why one action type, not several)
+
+Considered and rejected: a broader dashboard with distinct working action types (Slack, email, calendar, call, report). Rejected because each additional action type adds UI surface without adding walker reasoning — it's the same shallow branch repeated with a different label, not new traversal/decision logic. The rubric explicitly rewards depth ("the hard part genuinely done," central Use-of-Jac via walkers/graph traversal/byLLM/agentic flows) over breadth ("mostly scaffolding" scores a 1). One action type (draft-and-approve) sitting on top of a genuinely multi-step reasoning chain (traverse → compare → detect conflict → decide action) scores higher than five action types sitting on top of the same shallow logic. Source diversity (Slack/email/meeting notes) is preserved narratively via labels on fixture data, not via separate integrations.
+
 ## 4. Demo Script (fits the rubric's 4-minute structure)
 
-1. **Who/what breaks (≈45s):** "An adjuster gets a water-damage claim. The policy doc, the claim form, and the call notes were written by different people at different times — and they disagree."
-2. **Live workflow (≈2min):** Ask the agent about the claim. Watch the agent trace show it visiting Fact nodes, comparing sources, detecting the conflict, and choosing to flag rather than answer. See the conflict surfaced with both citations. Ask it to draft a response; see the draft; click Approve & Send.
-3. **Where Jac runs (≈45s):** Point at the walker file — the traversal/decision logic — and the `by llm()` calls doing extraction and action-selection. One-line mention: "same walker code, different config, and this runs on onboarding docs or CRM records instead — the engine doesn't know it's insurance."
-4. **Close (≈30s):** Recap the value: no guessing on stale/conflicting info, nothing sent without a human approving it.
+1. **Who/what breaks (≈45s):** Landing screen: "Sift" + tagline. "An adjuster gets a water-damage claim. The policy doc, the claim form, and the call notes were written by different people at different times — and they disagree."
+2. **Dashboard (≈15s):** Enter the dashboard — 2-3 cards, each a claim/item needing review, with source labels and a one-line reason. Click into the water-damage claim.
+3. **Live workflow (≈2min):** Ask the agent about the claim. Watch the live graph panel light up as the walker visits Fact nodes and the agent trace shows comparing sources, detecting the conflict, and choosing to flag rather than answer. See the conflict surfaced with both citations; click one to verify against the highlighted source. Ask it to draft a response; see the draft; click Approve & Send.
+4. **Where Jac runs (≈30s):** Point at the walker file — the traversal/decision logic — and the `by llm()` calls doing extraction and action-selection. One-line mention: "same walker code, different config, and this runs on onboarding docs or CRM records instead — the engine doesn't know it's insurance" (glance at the `domain_config.jac` aside).
+5. **Close (≈15s):** Recap the value: no guessing on stale/conflicting info, nothing sent without a human approving it.
+
+## 4a. UI Flow
+
+1. **Landing** — product name "Sift", one-line tagline, single "Enter" action. No signup form.
+2. **Dashboard** — 2-3 cards ranked by relevance, each showing a short reason and its source labels (icons for policy/claim/call-notes, styled to also represent email/Slack/meeting-notes narratively). Click a card to open Review.
+3. **Review screen** — three-pane layout:
+   - *Left:* live SVG graph — claim node → source nodes → fact nodes, with visited nodes highlighted as the walker traverses, and conflicting facts rendered as pulsing/connected nodes.
+   - *Middle:* the question/answer, with the conflict explanation and clickable citations.
+   - *Right:* source-verify panel — raw fixture text with the exact cited span highlighted; swaps content when a different citation is clicked.
+   - *Below the answer:* draft pane with Approve & Send / Edit — send is mocked, clearly a deliberate distinct step.
 
 ## 5. Rubric Alignment (self-check, not to be included in the demo)
 

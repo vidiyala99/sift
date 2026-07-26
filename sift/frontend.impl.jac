@@ -1,15 +1,13 @@
-"""Implementations for the sift frontend component."""
+"""Implementations for the sift frontend components."""
 
-impl app.goDashboard -> None {
-    view = "dashboard";
+impl Dashboard.loadDashboard -> None {
     loading = True;
     result = root spawn GetDashboard();
     dashboard = result.reports;
     loading = False;
 }
 
-impl app.openReview(claim_id: str) -> None {
-    view = "review";
+impl Review.openReview(claim_id: str) -> None {
     loading = True;
     approved = False;
     approved_at = "";
@@ -47,12 +45,12 @@ impl app.openReview(claim_id: str) -> None {
     loading = False;
 }
 
-impl app.selectCitation(source_name: str, statement: str) -> None {
+impl Review.selectCitation(source_name: str, statement: str) -> None {
     selected_source = source_name;
     selected_statement = statement;
 }
 
-impl app.approveSend -> None {
+impl Review.approveSend -> None {
     result = root spawn ApproveDraft(
         claim_id=review.get("claim_id", ""),
         draft_text=review.get("draft", ""),

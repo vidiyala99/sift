@@ -1,13 +1,130 @@
-"""Sift - Client UI. Landing -> Dashboard -> Review, one component, local view state."""
+"""Sift - Client UI. Real routes: / (landing), /dashboard, /review/:id."""
 
 import "./styles.css";
+import from "@jac/runtime" { Router, Routes, Route, useNavigate, useParams }
 
 sv import from endpoints { GetDashboard, ClaimReview, GetSources, ApproveDraft }
 
 def:pub app -> JsxElement {
-    has view: str = "landing",
-        dashboard: list[dict] = [],
-        review: dict = {},
+    return
+        <Router>
+            <Routes>
+                <Route path="/" element={<Landing/>}></Route>
+                <Route path="/dashboard" element={<Dashboard/>}></Route>
+                <Route path="/review/:id" element={<Review/>}></Route>
+            </Routes>
+        </Router>;
+}
+
+def Landing -> JsxElement {
+    navigate = useNavigate();
+
+    return
+        <div className="sift-app">
+            <div className="hero">
+                <span className="hero-tab">CASE FILE -- SIFT <span className="case-no">NO. 2026-004</span></span>
+                <h1>Stop cross-referencing.<br/>Start deciding.</h1>
+                <p>Sift pulls the tools you already work in -- Slack, Gmail, Granola, your CRM -- into one case file, flags where they disagree, and drafts what to do about it.</p>
+                <div className="stamp-wrap"><div className="stamp">CROSS-CHECKED</div></div>
+                <div><button className="cta" onClick={lambda e: any { navigate("/dashboard"); }}>Open a case file &#8594;</button></div>
+            </div>
+            <div className="trail">
+                <div className="exhibit">
+                    <div className="exhibit-tag tag-a">EXHIBIT A</div>
+                    <h3>Bring in your sources</h3>
+                    <p>Point Sift at the tools where the real story already lives.</p>
+                </div>
+                <div className="exhibit">
+                    <div className="exhibit-tag tag-b">EXHIBIT B</div>
+                    <h3>Let it find the contradictions</h3>
+                    <p>Sift compares every source on the same fact and flags where they don't agree.</p>
+                </div>
+                <div className="exhibit">
+                    <div className="exhibit-tag tag-c">EXHIBIT C</div>
+                    <h3>Review the drafted next step</h3>
+                    <p>You get a cited answer and a drafted action. You approve -- Sift never sends on its own.</p>
+                </div>
+            </div>
+            <div className="evidence">
+                <div className="label">Evidence sources on file</div>
+                <div className="tag-row">
+                    <span className="evidence-tag mono">SLACK</span>
+                    <span className="evidence-tag mono">GMAIL</span>
+                    <span className="evidence-tag mono">GRANOLA</span>
+                    <span className="evidence-tag mono">CRM</span>
+                </div>
+            </div>
+        </div>;
+}
+
+def Dashboard -> JsxElement {
+    has dashboard: list[dict] = [],
+        loading: bool = False;
+
+    navigate = useNavigate();
+
+    can with entry {
+        loadDashboard();
+    }
+
+    async def loadDashboard -> None;
+
+    return
+        <div className="sift-app">
+            <div className="bar">
+                <span>SIFT -- CASE LEDGER</span>
+                <button className="link" onClick={lambda e: any { navigate("/"); }}>&#8592; back</button>
+            </div>
+            <div className="cols" style={{"minHeight": "auto"}}>
+                <div className="ledger" style={{"borderRight": "none", "paddingBottom": "48px"}}>
+                    <div className="label">Open cases</div>
+                    {
+                        len(dashboard) > 0 &&
+                        <div className="tally" style={{"marginTop": "0", "marginBottom": "18px"}}>
+                            {len(dashboard)} case(s) on file --
+                            {" " + str(len([r for r in dashboard if r["status"] == "contested"])) + " contested, "}
+                            {str(len([r for r in dashboard if r["status"] == "clear"])) + " cleared"}
+                        </div>
+                    }
+                    {
+                        loading &&
+                        <div className="loading">loading case file...</div>
+                    }
+                    {
+                        [
+                            <button key={row["claim_id"]} className="ledger-row" onClick={lambda e: any { navigate(f"/review/{row['claim_id']}"); }}>
+                                <div className="ledger-top">
+                                    <div className="ledger-title">{row["title"]}</div>
+                                    <span className={"stamp-mark " + ("red" if row["status"] == "contested" else "green")}>
+                                        {"CONTESTED" if row["status"] == "contested" else "CLEARED"}
+                                    </span>
+                                </div>
+                                <div className="ledger-desc">{row["summary"]}</div>
+                            </button>
+                            for row in dashboard
+                        ]
+                    }
+                    {
+                        len(dashboard) > 0 &&
+                        <div className="ledger-row static">
+                            <div className="ledger-top">
+                                <div className="ledger-title">Reyes household -- policy renewal</div>
+                                <span className="stamp-mark blue">DRAFTED</span>
+                            </div>
+                            <div className="ledger-desc">Follow-up drafted from a prior call. Same engine, illustrative only -- not wired in this build.</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>;
+}
+
+def Review -> JsxElement {
+    params = useParams();
+    claim_id = params["id"];
+    navigate = useNavigate();
+
+    has review: dict = {},
         sources: list[dict] = [],
         selected_source: str = "",
         selected_statement: str = "",
@@ -15,106 +132,18 @@ def:pub app -> JsxElement {
         approved_at: str = "",
         loading: bool = False;
 
-    async def goDashboard -> None;
+    can with entry {
+        openReview(claim_id);
+    }
+
     async def openReview(claim_id: str) -> None;
     async def selectCitation(source_name: str, statement: str) -> None;
     async def approveSend -> None;
 
-    if view == "landing" {
-        return
-            <div className="sift-app">
-                <div className="hero">
-                    <span className="hero-tab">CASE FILE -- SIFT <span className="case-no">NO. 2026-004</span></span>
-                    <h1>Stop cross-referencing.<br/>Start deciding.</h1>
-                    <p>Sift pulls the tools you already work in -- Slack, Gmail, Granola, your CRM -- into one case file, flags where they disagree, and drafts what to do about it.</p>
-                    <div className="stamp-wrap"><div className="stamp">CROSS-CHECKED</div></div>
-                    <div><button className="cta" onClick={goDashboard}>Open a case file &#8594;</button></div>
-                </div>
-                <div className="trail">
-                    <div className="exhibit">
-                        <div className="exhibit-tag tag-a">EXHIBIT A</div>
-                        <h3>Bring in your sources</h3>
-                        <p>Point Sift at the tools where the real story already lives.</p>
-                    </div>
-                    <div className="exhibit">
-                        <div className="exhibit-tag tag-b">EXHIBIT B</div>
-                        <h3>Let it find the contradictions</h3>
-                        <p>Sift compares every source on the same fact and flags where they don't agree.</p>
-                    </div>
-                    <div className="exhibit">
-                        <div className="exhibit-tag tag-c">EXHIBIT C</div>
-                        <h3>Review the drafted next step</h3>
-                        <p>You get a cited answer and a drafted action. You approve -- Sift never sends on its own.</p>
-                    </div>
-                </div>
-                <div className="evidence">
-                    <div className="label">Evidence sources on file</div>
-                    <div className="tag-row">
-                        <span className="evidence-tag mono">SLACK</span>
-                        <span className="evidence-tag mono">GMAIL</span>
-                        <span className="evidence-tag mono">GRANOLA</span>
-                        <span className="evidence-tag mono">CRM</span>
-                    </div>
-                </div>
-            </div>;
-    }
-
-    if view == "dashboard" {
-        return
-            <div className="sift-app">
-                <div className="bar">
-                    <span>SIFT -- CASE LEDGER</span>
-                    <button className="link" onClick={lambda e: any { view = "landing"; }}>&#8592; back</button>
-                </div>
-                <div className="cols" style={{"minHeight": "auto"}}>
-                    <div className="ledger" style={{"borderRight": "none", "paddingBottom": "48px"}}>
-                        <div className="label">Open cases</div>
-                        {
-                            len(dashboard) > 0 &&
-                            <div className="tally" style={{"marginTop": "0", "marginBottom": "18px"}}>
-                                {len(dashboard)} case(s) on file --
-                                {" " + str(len([r for r in dashboard if r["status"] == "contested"])) + " contested, "}
-                                {str(len([r for r in dashboard if r["status"] == "clear"])) + " cleared"}
-                            </div>
-                        }
-                        {
-                            loading &&
-                            <div className="loading">loading case file...</div>
-                        }
-                        {
-                            [
-                                <button key={row["claim_id"]} className="ledger-row" onClick={lambda e: any { openReview(row["claim_id"]); }}>
-                                    <div className="ledger-top">
-                                        <div className="ledger-title">{row["title"]}</div>
-                                        <span className={"stamp-mark " + ("red" if row["status"] == "contested" else "green")}>
-                                            {"CONTESTED" if row["status"] == "contested" else "CLEARED"}
-                                        </span>
-                                    </div>
-                                    <div className="ledger-desc">{row["summary"]}</div>
-                                </button>
-                                for row in dashboard
-                            ]
-                        }
-                        {
-                            len(dashboard) > 0 &&
-                            <div className="ledger-row static">
-                                <div className="ledger-top">
-                                    <div className="ledger-title">Reyes household -- policy renewal</div>
-                                    <span className="stamp-mark blue">DRAFTED</span>
-                                </div>
-                                <div className="ledger-desc">Follow-up drafted from a prior call. Same engine, illustrative only -- not wired in this build.</div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>;
-    }
-
-    # view == "review"
     if loading {
         return
             <div className="sift-app">
-                <div className="bar"><span>SIFT -- CASE FILE</span></div>
+                <div className="bar"><span>SIFT -- CASE FILE #{claim_id}</span></div>
                 <div className="loading">
                     <div className="display" style={{"fontSize": "16px", "marginBottom": "10px"}}>cross-checking sources...</div>
                     <div style={{"fontSize": "12.5px"}}>traversing the graph, comparing facts, and drafting a recommendation</div>
@@ -126,8 +155,8 @@ def:pub app -> JsxElement {
         return
             <div className="sift-app">
                 <div className="bar">
-                    <span>SIFT -- CASE FILE</span>
-                    <button className="link" onClick={goDashboard}>&#8592; back to ledger</button>
+                    <span>SIFT -- CASE FILE #{claim_id}</span>
+                    <button className="link" onClick={lambda e: any { navigate("/dashboard"); }}>&#8592; back to ledger</button>
                 </div>
                 <div className="loading">
                     <div className="display" style={{"fontSize": "16px", "marginBottom": "10px", "color": "var(--stamp-red)"}}>couldn't reach the case file</div>
@@ -178,7 +207,7 @@ def:pub app -> JsxElement {
         <div className="sift-app">
             <div className="bar">
                 <span>SIFT -- CASE FILE #{review.get("claim_id", "")}</span>
-                <button className="link" onClick={goDashboard}>&#8592; back to ledger</button>
+                <button className="link" onClick={lambda e: any { navigate("/dashboard"); }}>&#8592; back to ledger</button>
             </div>
             <div className="cols">
                 <div className="graph-pane">

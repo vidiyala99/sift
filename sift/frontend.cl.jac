@@ -80,6 +80,31 @@ def:pub app -> JsxElement {
     }
 
     # view == "review"
+    if loading {
+        return
+            <div className="sift-app">
+                <div className="bar"><span>SIFT -- CASE FILE</span></div>
+                <div className="loading">
+                    <div className="display" style={{"fontSize": "16px", "marginBottom": "10px"}}>cross-checking sources...</div>
+                    <div style={{"fontSize": "12.5px"}}>traversing the graph, comparing facts, and drafting a recommendation</div>
+                </div>
+            </div>;
+    }
+
+    if review.get("error") {
+        return
+            <div className="sift-app">
+                <div className="bar">
+                    <span>SIFT -- CASE FILE</span>
+                    <button className="link" onClick={goDashboard}>&#8592; back to ledger</button>
+                </div>
+                <div className="loading">
+                    <div className="display" style={{"fontSize": "16px", "marginBottom": "10px", "color": "var(--stamp-red)"}}>couldn't reach the case file</div>
+                    <div style={{"fontSize": "12.5px"}}>{review.get("error")}</div>
+                </div>
+            </div>;
+    }
+
     facts: list[dict] = review.get("facts", []);
     citation_facts = [f for f in facts if any(w in f["statement"].lower() for w in ["gradual", "sudden", "seepage", "rupture"])];
     selected_source_data = None;

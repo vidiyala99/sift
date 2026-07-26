@@ -14,29 +14,34 @@ impl app.openReview(claim_id: str) -> None {
     approved = False;
     selected_source = "";
     selected_statement = "";
+    review = {};
 
-    src_result = root spawn GetSources();
-    sources = src_result.reports;
+    try {
+        src_result = root spawn GetSources();
+        sources = src_result.reports;
 
-    result = root spawn ClaimReview(claim_id=claim_id);
-    r = result.reports[0];
-    review = {
-        "claim_id": r.claim_id,
-        "has_conflict": r.has_conflict,
-        "conflict_topic": r.conflict_topic,
-        "facts": [
-            {
-                "topic": f.topic,
-                "statement": f.statement,
-                "source_name": f.source_name,
-                "source_kind": f.source_kind
-            }
-            for f in r.facts
-        ],
-        "action": r.action,
-        "answer": r.answer,
-        "draft": r.draft
-    };
+        result = root spawn ClaimReview(claim_id=claim_id);
+        r = result.reports[0];
+        review = {
+            "claim_id": r.claim_id,
+            "has_conflict": r.has_conflict,
+            "conflict_topic": r.conflict_topic,
+            "facts": [
+                {
+                    "topic": f.topic,
+                    "statement": f.statement,
+                    "source_name": f.source_name,
+                    "source_kind": f.source_kind
+                }
+                for f in r.facts
+            ],
+            "action": r.action,
+            "answer": r.answer,
+            "draft": r.draft
+        };
+    } except Exception as e {
+        review = {"error": f"{e}"};
+    }
     loading = False;
 }
 

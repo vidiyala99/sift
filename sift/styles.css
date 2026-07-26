@@ -120,7 +120,7 @@ body {
   background: none; border: none; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
   color: var(--case-blue); cursor: pointer; text-decoration: underline;
 }
-.cols { display: flex; min-height: 70vh; flex-wrap: wrap; }
+.cols { display: flex; align-items: flex-start; gap: 18px; padding: 18px; flex-wrap: wrap; }
 
 .index { width: 200px; border-right: 1px solid var(--line); padding: 18px 14px; }
 .index .label { font-size: 10.5px; letter-spacing: 0.1em; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 12px; }
@@ -155,8 +155,14 @@ body {
 .stamp-mark.green { color: var(--stamp-green); border-color: var(--stamp-green); }
 .stamp-mark.blue { color: var(--case-blue); border-color: var(--case-blue); }
 
-/* review screen */
-.graph-pane { width: 260px; border-right: 1px solid var(--line); padding: 18px 14px; }
+/* review screen -- each pane is a self-contained panel, sized to its own content */
+.graph-pane, .answer-pane, .memo-pane, .verify-pane {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(30,34,48,0.05);
+}
+.graph-pane { width: 260px; padding: 16px 14px; }
 .graph-pane .label { font-size: 10.5px; letter-spacing: 0.1em; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 10px; }
 .trace-box {
   background: var(--trace-dark); border-radius: 8px; padding: 12px 14px; margin-top: 14px;
@@ -166,9 +172,9 @@ body {
 .trace-box .warn { color: #f59e0b; }
 .trace-box .ok { color: #4ade80; }
 
-.answer-pane { flex: 1; min-width: 280px; padding: 18px 20px; border-right: 1px solid var(--line); }
+.answer-pane { flex: 1; min-width: 280px; padding: 16px 20px; }
 .qbubble { background: var(--case-blue); color: #F2EEE2; padding: 10px 14px; border-radius: 12px 12px 2px 12px; max-width: 78%; font-size: 13.5px; margin-bottom: 14px; }
-.answer-card { background: var(--paper-card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; box-shadow: 0 1px 3px rgba(30,34,48,0.06); }
+.answer-card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
 .answer-card.conflict { border-color: var(--stamp-red); }
 .cite {
   background: var(--paper); border: 1px dashed var(--line); border-radius: 4px; padding: 8px 10px;
@@ -177,9 +183,9 @@ body {
 .cite:hover, .cite.selected { border-color: var(--case-blue); }
 .cite b { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
 
-.memo-pane { width: 280px; padding: 18px 18px; }
+.memo-pane { width: 280px; padding: 16px 18px; }
 .memo-pane .label { font-size: 10.5px; letter-spacing: 0.1em; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 12px; }
-.memo-card { background: var(--paper-card); border: 1px solid var(--line); border-radius: 4px; padding: 14px; box-shadow: 0 1px 3px rgba(30,34,48,0.06); }
+.memo-card { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 14px; }
 .memo-head { font-family: 'Special Elite', monospace; font-size: 12.5px; color: var(--stamp-red); margin-bottom: 8px; }
 .memo-body { background: var(--paper); border: 1px dashed var(--line); border-radius: 3px; padding: 10px; font-size: 12px; font-style: italic; color: var(--ink-soft); line-height: 1.55; }
 .sig-line { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 8px; font-size: 10.5px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; }
@@ -191,7 +197,7 @@ body {
 .memo-btn:disabled { opacity: 0.6; cursor: default; }
 .memo-note { margin-top: 12px; font-size: 11px; color: var(--ink-soft); line-height: 1.5; }
 
-.verify-pane { width: 280px; padding: 18px 0 18px 18px; }
+.verify-pane { width: 280px; padding: 16px 18px; }
 .verify-pane .label { font-size: 10.5px; letter-spacing: 0.1em; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 10px; }
 .verify-card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-size: 12px; color: var(--ink-soft); line-height: 1.7; max-height: 420px; overflow-y: auto; }
 .verify-card mark { background: #fef08a; color: #1E2230; padding: 0 2px; border-radius: 2px; }
@@ -201,5 +207,5 @@ body {
 
 @media (max-width: 900px) {
   .cols { flex-direction: column; }
-  .index, .graph-pane, .memo-pane, .verify-pane { width: auto; border-right: none; border-bottom: 1px solid var(--line); }
+  .graph-pane, .memo-pane, .verify-pane { width: auto; }
 }

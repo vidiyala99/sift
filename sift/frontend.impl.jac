@@ -12,6 +12,7 @@ impl app.openReview(claim_id: str) -> None {
     view = "review";
     loading = True;
     approved = False;
+    approved_at = "";
     selected_source = "";
     selected_statement = "";
     review = {};
@@ -37,7 +38,8 @@ impl app.openReview(claim_id: str) -> None {
             ],
             "action": r.action,
             "answer": r.answer,
-            "draft": r.draft
+            "draft": r.draft,
+            "withheld_count": r.withheld_count
         };
     } except Exception as e {
         review = {"error": f"{e}"};
@@ -51,5 +53,12 @@ impl app.selectCitation(source_name: str, statement: str) -> None {
 }
 
 impl app.approveSend -> None {
+    result = root spawn ApproveDraft(
+        claim_id=review.get("claim_id", ""),
+        draft_text=review.get("draft", ""),
+        approver="adjuster"
+    );
+    log_entry = result.reports[0];
+    approved_at = log_entry["approved_at"];
     approved = True;
 }

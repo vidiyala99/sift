@@ -7,6 +7,7 @@ contradictions, and decides what to do about it.
 """
 
 import os;
+import datetime;
 import from byllm.lib { Model }
 
 glob llm = Model(model_name="gpt-4o-mini");
@@ -23,7 +24,8 @@ node Fact {
     has topic: str,
         statement: str,
         source_name: str,
-        source_kind: str;
+        source_kind: str,
+        sensitive: bool = False;
 }
 
 node Claim {
@@ -37,13 +39,15 @@ edge From {}
 
 obj FactExtraction {
     has topic: str,
-        statement: str;
+        statement: str,
+        sensitive: bool;
 }
 
 def extract_facts(text: str, source_kind: str) -> list[FactExtraction] by llm();
-sem extract_facts = "Extract every discrete factual claim from this source document relevant to an insurance claim (coverage terms, exclusions, incident details, dates, causes, amounts). For each fact, 'statement' MUST be an exact verbatim sentence or clause copied from the text -- do not paraphrase, summarize, or reword. 'topic' is a short label describing what the fact is about (e.g. 'cause of water damage', 'coverage limit', 'filing deadline'). Be thorough: extract every distinct clause or sentence that could matter to a coverage decision, especially exclusions and conditions, not just a few highlights.";
+sem extract_facts = "Extract every discrete factual claim from this source document relevant to an insurance claim (coverage terms, exclusions, incident details, dates, causes, amounts). For each fact, 'statement' MUST be an exact verbatim sentence or clause copied from the text -- do not paraphrase, summarize, or reword. 'topic' is a short label describing what the fact is about (e.g. 'cause of water damage', 'coverage limit', 'filing deadline'). Be thorough: extract every distinct clause or sentence that could matter to a coverage decision, especially exclusions and conditions, not just a few highlights. Set 'sensitive' true ONLY for content explicitly marked internal-only/not-for-external-use, or that discusses a private matter genuinely unrelated to this claim (e.g. an unrelated personal dispute, health, or relationship detail). Ordinary claim administration facts -- the policyholder's name, policy number, loss location, dates, amounts, claim status -- are NEVER sensitive, even though they are personal data; mark those false. When in doubt, mark false.";
 sem FactExtraction.topic = "Short topic label, consistent wording across sources when they refer to the same subject.";
 sem FactExtraction.statement = "Verbatim excerpt copied exactly from the source text.";
+sem FactExtraction.sensitive = "True ONLY for explicitly internal-only content or a private matter unrelated to the claim. False for all ordinary claim/coverage/identity facts, including names, policy numbers, and addresses -- these are routine, not sensitive.";
 
 """Deterministic (non-LLM) groundedness check: the statement must actually appear in the source."""
 def is_grounded(statement: str, source_text: str) -> bool {
@@ -100,7 +104,8 @@ walker:pub IngestFixtures {
                     topic=item.topic,
                     statement=item.statement,
                     source_name=name,
-                    source_kind=kind
+                    source_kind=kind,
+                    sensitive=item.sensitive
                 );
                 if owning_claim != None {
                     claim_nodes[owning_claim] ++> fact[0];
@@ -127,7 +132,8 @@ obj ReviewResult {
         facts: list[FactView],
         action: str,
         answer: str,
-        draft: str;
+        draft: str,
+        withheld_count: int = 0;
 }
 
 obj ConflictAnalysis {
@@ -151,7 +157,7 @@ walker:pub ClaimReview {
     has claim_id: str = "CLM-4471",
         result: ReviewResult = ReviewResult(
             claim_id="", has_conflict=False, conflict_topic="",
-            facts=[], action="", answer="", draft=""
+            facts=[], action="", answer="", draft="", withheld_count=0
         ),
         reports: list[ReviewResult] = [];
 
@@ -162,17 +168,22 @@ walker:pub ClaimReview {
     can review with Claim entry {
         claim_facts = [-->][?:Fact];
 
-        all_relevant: list[Fact] = [];
+        all_gathered: list[Fact] = [];
         for src in [root -->][?:Source, kind == "policy"] {
             for f in [src -->][?:Fact] {
-                all_relevant.append(f);
+                all_gathered.append(f);
             }
         }
         for f in claim_facts {
-            if f not in all_relevant {
-                all_relevant.append(f);
+            if f not in all_gathered {
+                all_gathered.append(f);
             }
         }
+
+        # Sensitive facts are tracked but never surfaced to the LLM calls,
+        # the citation list, or the policyholder-facing draft.
+        all_relevant = [f for f in all_gathered if not f.sensitive];
+        withheld_count = len(all_gathered) - len(all_relevant);
 
         facts_summary = "\n".join([f"[{f.source_name}] ({f.topic}): {f.statement}" for f in all_relevant]);
 
@@ -193,7 +204,8 @@ walker:pub ClaimReview {
             facts=[FactView(topic=f.topic, statement=f.statement, source_name=f.source_name, source_kind=f.source_kind) for f in all_relevant],
             action=action,
             answer=answer,
-            draft=draft
+            draft=draft,
+            withheld_count=withheld_count
         );
         report self.result;
     }
@@ -228,6 +240,40 @@ walker:pub GetSources {
     can run with Root entry {
         for s in [-->][?:Source] {
             report {"name": s.name, "kind": s.kind, "raw_text": s.raw_text};
+        }
+    }
+}
+
+# --- Audit trail ---------------------------------------------------------
+
+node ApprovalLog {
+    has claim_id: str,
+        draft_text: str,
+        approved_at: str,
+        approver: str;
+}
+
+"""Persist an approval event -- the real record backing the memo's signature line. Nothing is ever auto-logged as approved; this only runs when a human clicks Approve & Send."""
+walker:pub ApproveDraft {
+    has claim_id: str = "",
+        draft_text: str = "",
+        approver: str = "adjuster",
+        reports: list[dict] = [];
+
+    can run with Root entry {
+        ts = datetime.datetime.now().isoformat(timespec="seconds");
+        here ++> ApprovalLog(claim_id=self.claim_id, draft_text=self.draft_text, approved_at=ts, approver=self.approver);
+        report {"approved_at": ts, "claim_id": self.claim_id, "approver": self.approver};
+    }
+}
+
+"""Return the full approval history -- the actual audit trail, not just a UI label."""
+walker:pub GetApprovalLog {
+    has reports: list[dict] = [];
+
+    can run with Root entry {
+        for a in [-->][?:ApprovalLog] {
+            report {"claim_id": a.claim_id, "draft_text": a.draft_text, "approved_at": a.approved_at, "approver": a.approver};
         }
     }
 }

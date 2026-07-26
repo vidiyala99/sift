@@ -2,7 +2,7 @@
 
 import "./styles.css";
 
-sv import from endpoints { GetDashboard, ClaimReview, GetSources }
+sv import from endpoints { GetDashboard, ClaimReview, GetSources, ApproveDraft }
 
 def:pub app -> JsxElement {
     has view: str = "landing",
@@ -12,6 +12,7 @@ def:pub app -> JsxElement {
         selected_source: str = "",
         selected_statement: str = "",
         approved: bool = False,
+        approved_at: str = "",
         loading: bool = False;
 
     async def goDashboard -> None;
@@ -191,6 +192,10 @@ def:pub app -> JsxElement {
                         <div className="hd">agent trace -- ClaimReview</div>
                         <div>&#8594; visited {len(facts)} facts across {len(sources)} sources</div>
                         {
+                            review.get("withheld_count", 0) > 0 &&
+                            <div>&#128274; withheld {review.get("withheld_count", 0)} sensitive fact(s) -- not surfaced</div>
+                        }
+                        {
                             review.get("has_conflict") &&
                             <div className="warn">&#9888; conflict: {review.get("conflict_topic", "")}</div>
                         }
@@ -222,9 +227,11 @@ def:pub app -> JsxElement {
                         <div className="memo-card">
                             <div className="memo-head">RE: confirm cause of loss</div>
                             <div className="memo-body">"{review.get("draft", "")}"</div>
-                            <div className="sig-line">APPROVED BY: __________________</div>
+                            <div className="sig-line">
+                                {"APPROVED BY: adjuster -- " + approved_at if approved else "APPROVED BY: __________________"}
+                            </div>
                             <button className="memo-btn primary" onClick={approveSend} disabled={approved}>
-                                {"Sent (mocked)" if approved else "Approve & Send →"}
+                                {"Sent (mocked) -- logged" if approved else "Approve & Send →"}
                             </button>
                         </div>
                     }

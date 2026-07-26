@@ -54,9 +54,17 @@ def:pub app -> JsxElement {
                     <span>SIFT -- CASE LEDGER</span>
                     <button className="link" onClick={lambda e: any { view = "landing"; }}>&#8592; back</button>
                 </div>
-                <div className="cols">
-                    <div className="ledger" style={{"borderRight": "none"}}>
+                <div className="cols" style={{"minHeight": "auto"}}>
+                    <div className="ledger" style={{"borderRight": "none", "paddingBottom": "48px"}}>
                         <div className="label">Open cases</div>
+                        {
+                            len(dashboard) > 0 &&
+                            <div className="tally" style={{"marginTop": "0", "marginBottom": "18px"}}>
+                                {len(dashboard)} case(s) on file --
+                                {" " + str(len([r for r in dashboard if r["status"] == "contested"])) + " contested, "}
+                                {str(len([r for r in dashboard if r["status"] == "clear"])) + " cleared"}
+                            </div>
+                        }
                         {
                             loading &&
                             <div className="loading">loading case file...</div>
@@ -74,6 +82,16 @@ def:pub app -> JsxElement {
                                 </button>
                                 for row in dashboard
                             ]
+                        }
+                        {
+                            len(dashboard) > 0 &&
+                            <div className="ledger-row static">
+                                <div className="ledger-top">
+                                    <div className="ledger-title">Reyes household -- policy renewal</div>
+                                    <span className="stamp-mark blue">DRAFTED</span>
+                                </div>
+                                <div className="ledger-desc">Follow-up drafted from a prior call. Same engine, illustrative only -- not wired in this build.</div>
+                            </div>
                         }
                     </div>
                 </div>

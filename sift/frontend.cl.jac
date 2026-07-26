@@ -24,16 +24,28 @@ def:pub app -> JsxElement {
         return
             <div className="sift-app">
                 <div className="hero">
-                    <span className="hero-tab">CASE FILE -- SIFT</span>
+                    <span className="hero-tab">CASE FILE -- SIFT <span className="case-no">NO. 2026-004</span></span>
                     <h1>Stop cross-referencing.<br/>Start deciding.</h1>
                     <p>Sift pulls the tools you already work in -- Slack, Gmail, Granola, your CRM -- into one case file, flags where they disagree, and drafts what to do about it.</p>
                     <div className="stamp-wrap"><div className="stamp">CROSS-CHECKED</div></div>
                     <div><button className="cta" onClick={goDashboard}>Open a case file &#8594;</button></div>
                 </div>
-                <div className="steps">
-                    <div className="step"><div className="n">01 / CONNECT</div><h3>Bring in your sources</h3><p>Point Sift at the tools where the real story already lives.</p></div>
-                    <div className="step"><div className="n">02 / CROSS-CHECK</div><h3>Let it find the contradictions</h3><p>Sift compares every source on the same fact and flags where they don't agree.</p></div>
-                    <div className="step"><div className="n">03 / DECIDE</div><h3>Review the drafted next step</h3><p>You get a cited answer and a drafted action. You approve -- Sift never sends on its own.</p></div>
+                <div className="trail">
+                    <div className="exhibit">
+                        <div className="exhibit-tag tag-a">EXHIBIT A</div>
+                        <h3>Bring in your sources</h3>
+                        <p>Point Sift at the tools where the real story already lives.</p>
+                    </div>
+                    <div className="exhibit">
+                        <div className="exhibit-tag tag-b">EXHIBIT B</div>
+                        <h3>Let it find the contradictions</h3>
+                        <p>Sift compares every source on the same fact and flags where they don't agree.</p>
+                    </div>
+                    <div className="exhibit">
+                        <div className="exhibit-tag tag-c">EXHIBIT C</div>
+                        <h3>Review the drafted next step</h3>
+                        <p>You get a cited answer and a drafted action. You approve -- Sift never sends on its own.</p>
+                    </div>
                 </div>
                 <div className="evidence">
                     <div className="label">Evidence sources on file</div>

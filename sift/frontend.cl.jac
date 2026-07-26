@@ -20,38 +20,40 @@ def Landing -> JsxElement {
     navigate = useNavigate();
 
     return
-        <div className="sift-app">
-            <div className="hero">
-                <span className="hero-tab">CASE FILE -- SIFT <span className="case-no">NO. 2026-004</span></span>
-                <h1>Stop cross-referencing.<br/>Start deciding.</h1>
-                <p>Sift pulls the tools you already work in -- Slack, Gmail, Granola, your CRM -- into one case file, flags where they disagree, and drafts what to do about it.</p>
-                <div className="stamp-wrap"><div className="stamp">CROSS-CHECKED</div></div>
-                <div><button className="cta" onClick={lambda e: any { navigate("/dashboard"); }}>Open a case file &#8594;</button></div>
-            </div>
-            <div className="trail">
-                <div className="exhibit">
-                    <div className="exhibit-tag tag-a">EXHIBIT A</div>
-                    <h3>Bring in your sources</h3>
-                    <p>Point Sift at the tools where the real story already lives.</p>
+        <div className="landing-frame">
+            <div className="sift-app">
+                <div className="hero">
+                    <span className="hero-tab">CASE FILE -- SIFT <span className="case-no">NO. 2026-004</span></span>
+                    <h1>Stop cross-referencing.<br/>Start deciding.</h1>
+                    <p>Sift pulls the tools you already work in -- Slack, Gmail, Granola, your CRM -- into one case file, flags where they disagree, and drafts what to do about it.</p>
+                    <div className="stamp-wrap"><div className="stamp">CROSS-CHECKED</div></div>
+                    <div><button className="cta" onClick={lambda e: any { navigate("/dashboard"); }}>Open a case file &#8594;</button></div>
                 </div>
-                <div className="exhibit">
-                    <div className="exhibit-tag tag-b">EXHIBIT B</div>
-                    <h3>Let it find the contradictions</h3>
-                    <p>Sift compares every source on the same fact and flags where they don't agree.</p>
+                <div className="trail">
+                    <div className="exhibit">
+                        <div className="exhibit-tag tag-a">EXHIBIT A</div>
+                        <h3>Bring in your sources</h3>
+                        <p>Point Sift at the tools where the real story already lives.</p>
+                    </div>
+                    <div className="exhibit">
+                        <div className="exhibit-tag tag-b">EXHIBIT B</div>
+                        <h3>Let it find the contradictions</h3>
+                        <p>Sift compares every source on the same fact and flags where they don't agree.</p>
+                    </div>
+                    <div className="exhibit">
+                        <div className="exhibit-tag tag-c">EXHIBIT C</div>
+                        <h3>Review the drafted next step</h3>
+                        <p>You get a cited answer and a drafted action. You approve -- Sift never sends on its own.</p>
+                    </div>
                 </div>
-                <div className="exhibit">
-                    <div className="exhibit-tag tag-c">EXHIBIT C</div>
-                    <h3>Review the drafted next step</h3>
-                    <p>You get a cited answer and a drafted action. You approve -- Sift never sends on its own.</p>
-                </div>
-            </div>
-            <div className="evidence">
-                <div className="label">Evidence sources on file</div>
-                <div className="tag-row">
-                    <span className="evidence-tag mono">SLACK</span>
-                    <span className="evidence-tag mono">GMAIL</span>
-                    <span className="evidence-tag mono">GRANOLA</span>
-                    <span className="evidence-tag mono">CRM</span>
+                <div className="evidence">
+                    <div className="label">Evidence sources on file</div>
+                    <div className="tag-row">
+                        <span className="evidence-tag mono">SLACK</span>
+                        <span className="evidence-tag mono">GMAIL</span>
+                        <span className="evidence-tag mono">GRANOLA</span>
+                        <span className="evidence-tag mono">CRM</span>
+                    </div>
                 </div>
             </div>
         </div>;

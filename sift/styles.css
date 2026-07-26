@@ -13,29 +13,39 @@
   --trace-dark: #14171F;
 }
 
-body {
-  margin: 0;
-  background: #DED5BF;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 40px 20px;
-  box-sizing: border-box;
-}
+body { margin: 0; background: var(--paper); min-height: 100vh; }
 
+/* Default: full-bleed working screens (dashboard, review) -- fill the real
+   viewport width like an actual app, not a poster frame floating in a void. */
 .sift-app {
   font-family: 'IBM Plex Sans', sans-serif;
   color: var(--ink);
-  max-width: 1180px;
   width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* Landing only: contained, centered "case file" card -- this is prose/marketing
+   content, not a working screen, so it keeps comfortable reading width. */
+.landing-frame {
+  min-height: 100vh;
+  background: #DED5BF;
+  display: flex;
+  justify-content: center;
+  padding: 40px clamp(16px, 4vw, 64px);
+  box-sizing: border-box;
+}
+.landing-frame .sift-app {
+  max-width: 1000px;
   height: fit-content;
   background: var(--paper);
   box-shadow: 0 2px 4px rgba(30,34,48,0.06), 0 10px 30px rgba(30,34,48,0.09);
 }
-@media (max-width: 1180px) {
-  body { padding: 0; }
-  .sift-app { box-shadow: none; }
+@media (max-width: 1050px) {
+  .landing-frame { padding: 0; }
+  .landing-frame .sift-app { box-shadow: none; }
 }
+
 .mono { font-family: 'IBM Plex Mono', monospace; }
 .display { font-family: 'Special Elite', monospace; }
 

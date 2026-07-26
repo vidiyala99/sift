@@ -54,11 +54,12 @@ Walker (ClaimReviewWalker), spawned on a claim query:
   5. report chosen action + supporting Fact nodes (with source_ref) to caller
         │
         ▼
-:pub REST endpoint (jac start auto-generates this from the walker)
+walker:pub / def:pub server function (callable from client via compiler-generated RPC)
         │
         ▼
-Web UI: chat pane (question/answer) + agent trace pane (traversal steps)
-        + draft pane with Approve & Send / Edit buttons (send is mocked)
+cl {} JSX-in-Jac UI: landing → dashboard → review screen
+        (graph pane, agent trace, source-verify pane, draft pane w/ Approve & Send)
+        — same main.jac codebase as the backend, no separate frontend project
 ```
 
 **Node/edge types:**
@@ -70,7 +71,9 @@ Web UI: chat pane (question/answer) + agent trace pane (traversal steps)
 - `node`/`edge` declarations, `++>` / `+>: Edge(...) :+>` to connect
 - `walker` with `can ... with <NodeType> entry { ... }` abilities, `visit [-->]` to traverse (queued, BFS by default), `report` to collect results, `disengage` to stop early
 - `by llm()` function delegation with `sem` annotations for extraction, relevance-checking, conflict comparison, and action selection
-- `jac start` auto-exposing a `:pub` walker as a REST endpoint (no hand-rolled routing)
+- `jac start` auto-exposing `:pub` walkers/functions as callable server endpoints
+
+**Everything in this project is Jac — including the frontend.** Jac has a genuine full-stack pathway (`jac create --kind web-app`): a `cl { }` block (or `.cl.jac` file) compiles to a React/JSX bundle for the browser, everything outside it compiles to Python for the server, and the **same file** can hold both. A client component calling a `walker:pub`/`def:pub` server function is a real compiler-generated RPC (`await get_claim_review(...)`) — no hand-written REST client, no fetch boilerplate, no separate frontend repo or framework. This means the landing screen, dashboard, and review screen (graph SVG, agent trace, source-verify panel, draft/approve UI) are all `cl` JSX-in-Jac components in the same codebase as the walkers — there is no non-Jac application code, only `jac.toml` (declares npm deps like react/vite, which the compiler needs but which is config, not app logic).
 
 ## 3a. Citation Integrity (groundedness guarantee)
 
@@ -103,18 +106,21 @@ Considered and rejected: a broader dashboard with distinct working action types 
    - *Right:* source-verify panel — raw fixture text with the exact cited span highlighted; swaps content when a different citation is clicked.
    - *Below the answer:* draft pane with Approve & Send / Edit — send is mocked, clearly a deliberate distinct step.
 
+All three screens are `cl` JSX-in-Jac components (`has` fields for local state, `async can with entry` for load-time data fetch, `async def` handlers calling backend `walker:pub`/`def:pub` functions directly — e.g. `todos = await get_claim_review(claim_id)`). SVG graph elements and inline styles work exactly as in React JSX, since `cl` compiles to a real React/JSX bundle.
+
 ## 5. Rubric Alignment (self-check, not to be included in the demo)
 
 - **Use of Jac (40%):** Central — byLLM extraction, graph traversal, and an explicit walker decision step, not a static RAG pipeline. Aim: score 5 by keeping the conflict-comparison logic genuinely inside the walker's traversal, not hidden in one LLM call.
 - **Real-World Use Case (20%):** One named persona (the adjuster), one concrete claim scenario — not "insurance" as a market.
 - **Technical Execution (20%):** Scope is deliberately narrow (3 fixtures, one conflict, one draft action) so the hard part — traversal + conflict detection + action selection — is fully working rather than half-built across more features.
-- **Demo & Story (20%):** Entire flow is a live run against the walker's REST endpoint; agent trace panel makes the reasoning visible instead of a black-box chat bubble.
+- **Demo & Story (20%):** Entire flow is a live run against real backend calls (no mocked network layer); agent trace panel makes the reasoning visible instead of a black-box chat bubble.
 
 ## 6. Risks / Open Items
 
-- **Jac unfamiliarity:** builder has never written Jac before today. Mitigated by having real syntax reference cached locally (`scratchpad/jac_docs/`) from Firecrawl scrapes of docs.jaseci.org — no guessing at syntax during build.
+- **Jac unfamiliarity:** builder has never written Jac before today. Mitigated by having real syntax reference cached locally (`scratchpad/jac_docs/`) from Firecrawl scrapes of docs.jaseci.org — no guessing at syntax during build, including the fullstack `cl {}` pathway.
 - **LLM backend:** needs `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` set, or a local Ollama model configured in `jac.toml`. Decide which before implementation starts.
-- **Time risk:** if the walker/graph core takes longer than expected, cut the agent-trace UI polish and the draft-response action first — the Q&A + conflict-detection core is the non-negotiable minimum for a credible demo.
+- **Fullstack setup:** `jac create --kind web-app sift` scaffolds `main.jac` + `jac.toml` (npm deps: react, react-dom, vite — declared, not hand-installed separately); `jac start --dev` runs the dev server with hot reload for both client and server code. This is new surface (never used before today) alongside the walker/graph logic — budget time to get the scaffold running early, before building deep into the walker.
+- **Time risk:** if the walker/graph core or the `cl` frontend takes longer than expected, cut the agent-trace UI polish and the draft-response action first — the Q&A + conflict-detection core, working end-to-end through the real client-server RPC, is the non-negotiable minimum for a credible demo.
 
 ## 7. Verification Before Submission
 

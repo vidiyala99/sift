@@ -11,6 +11,12 @@
 
 7.3 Coverage limit for water damage claims under this section is $25,000 per occurrence.
 
+### Section 5: Personal Property
+
+5.1 Built-in household appliances are covered for sudden mechanical or electrical failure during normal use.
+
+5.2 Coverage limit for personal property claims under this section is $2,000 per occurrence.
+
 ### Section 4: General Exclusions
 
 4.1 Damage from flooding or groundwater is excluded (see separate flood rider).

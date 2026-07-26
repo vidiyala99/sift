@@ -64,15 +64,25 @@ walker:pub IngestFixtures {
         }
 
         base = os.path.dirname(os.path.abspath(__file__));
+
+        claims = [
+            ("CLM-4471", "Water damage, upstairs bathroom"),
+            ("CLM-2210", "Built-in dishwasher, sudden mechanical failure"),
+        ];
+        claim_nodes: dict[str, Claim] = {};
+        for (cid, desc) in claims {
+            cn = here ++> Claim(claim_id=cid, description=desc);
+            claim_nodes[cid] = cn[0];
+        }
+
         sources = [
-            ("Policy_HO3-88214.pdf", "policy", "fixtures/policy.md"),
-            ("Claim_CLM-4471.pdf", "claim", "fixtures/claim.md"),
-            ("Call_and_inspection_notes.txt", "call_notes", "fixtures/call_notes.md"),
+            ("Policy_HO3-88214.pdf", "policy", "fixtures/policy.md", None),
+            ("Claim_CLM-4471.pdf", "claim", "fixtures/claim.md", "CLM-4471"),
+            ("Call_and_inspection_notes.txt", "call_notes", "fixtures/call_notes.md", "CLM-4471"),
+            ("Claim_CLM-2210.pdf", "claim", "fixtures/claim2.md", "CLM-2210"),
         ];
 
-        claim_node = here ++> Claim(claim_id="CLM-4471", description="Water damage, upstairs bathroom");
-
-        for (name, kind, relpath) in sources {
+        for (name, kind, relpath, owning_claim) in sources {
             path = os.path.join(base, relpath);
             f = open(path, "r", encoding="utf-8");
             text = f.read();
@@ -92,8 +102,8 @@ walker:pub IngestFixtures {
                     source_name=name,
                     source_kind=kind
                 );
-                if kind != "policy" {
-                    claim_node[0] ++> fact[0];
+                if owning_claim != None {
+                    claim_nodes[owning_claim] ++> fact[0];
                 }
             }
         }
@@ -126,7 +136,7 @@ obj ConflictAnalysis {
 }
 
 def analyze_conflict(facts_summary: str) -> ConflictAnalysis by llm();
-sem analyze_conflict = "Review these facts (each tagged with its source) about one insurance claim. Decide whether any two of them meaningfully disagree or contradict each other on the same real-world topic, even if they use different wording or topic labels (e.g. 'cause of damage' and 'incident details' can be the same underlying topic). Only flag a genuine substantive disagreement material to the claim, not different phrasing of the same fact. If found, conflict_topic should describe the underlying topic in plain words.";
+sem analyze_conflict = "Review these facts (each tagged with its source) about one insurance claim. A conflict exists ONLY if two facts make incompatible statements about the same specific real-world detail of THIS incident (e.g. one source says the cause was X, another source says the cause was Y, and X and Y cannot both be true) -- even if they use different wording or topic labels. A general policy rule or exclusion clause is NOT itself a conflict just because it is relevant or could apply -- it only creates a conflict if some other fact directly contradicts it or contradicts another incident-specific fact. If all the incident-specific facts (from the claim form, call notes, etc.) are consistent with each other, there is NO conflict, regardless of which policy exclusions exist. Do not flag a conflict on speculation about what might be true -- only on facts that are actually stated and actually incompatible. If found, conflict_topic should describe the underlying topic in plain words.";
 
 def decide_action(claim_description: str, has_conflict: bool, facts_summary: str) -> str by llm();
 sem decide_action = "Choose exactly one action for a claims adjuster reviewing this claim: 'answer' (facts are clear and consistent, just answer directly), 'flag_conflict' (sources disagree on something material to coverage -- surface it rather than guessing), or 'escalate' (too ambiguous or high-stakes to resolve at all, needs a senior adjuster). Return only the single action word.";
@@ -153,7 +163,7 @@ walker:pub ClaimReview {
         claim_facts = [-->][?:Fact];
 
         all_relevant: list[Fact] = [];
-        for src in [root -->][?:Source] {
+        for src in [root -->][?:Source, kind == "policy"] {
             for f in [src -->][?:Fact] {
                 all_relevant.append(f);
             }
@@ -200,6 +210,13 @@ walker:pub GetDashboard {
             "status": "contested",
             "summary": "The adjuster's own site note contradicts the customer's account of what caused the damage.",
             "sources": ["call_notes", "policy"]
+        };
+        report {
+            "claim_id": "CLM-2210",
+            "title": "CLM-2210 -- dishwasher failure",
+            "status": "clear",
+            "summary": "Covered under personal property, no sources disagree.",
+            "sources": ["claim", "policy"]
         };
     }
 }

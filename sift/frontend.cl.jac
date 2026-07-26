@@ -65,7 +65,9 @@ def:pub app -> JsxElement {
                                 <button key={row["claim_id"]} className="ledger-row" onClick={lambda e: any { openReview(row["claim_id"]); }}>
                                     <div className="ledger-top">
                                         <div className="ledger-title">{row["title"]}</div>
-                                        <span className="stamp-mark red">CONTESTED</span>
+                                        <span className={"stamp-mark " + ("red" if row["status"] == "contested" else "green")}>
+                                            {"CONTESTED" if row["status"] == "contested" else "CLEARED"}
+                                        </span>
                                     </div>
                                     <div className="ledger-desc">{row["summary"]}</div>
                                 </button>
@@ -138,14 +140,23 @@ def:pub app -> JsxElement {
 
                 <div className="memo-pane">
                     <div className="label">Recommended memo</div>
-                    <div className="memo-card">
-                        <div className="memo-head">RE: confirm cause of loss</div>
-                        <div className="memo-body">"{review.get("draft", "")}"</div>
-                        <div className="sig-line">APPROVED BY: __________________</div>
-                        <button className="memo-btn primary" onClick={approveSend} disabled={approved}>
-                            {"Sent (mocked)" if approved else "Approve & Send →"}
-                        </button>
-                    </div>
+                    {
+                        review.get("draft") &&
+                        <div className="memo-card">
+                            <div className="memo-head">RE: confirm cause of loss</div>
+                            <div className="memo-body">"{review.get("draft", "")}"</div>
+                            <div className="sig-line">APPROVED BY: __________________</div>
+                            <button className="memo-btn primary" onClick={approveSend} disabled={approved}>
+                                {"Sent (mocked)" if approved else "Approve & Send →"}
+                            </button>
+                        </div>
+                    }
+                    {
+                        not review.get("draft") &&
+                        <div className="memo-card">
+                            <div style={{"fontSize": "13px", "color": "var(--ink-soft)"}}>No follow-up needed -- the facts on file are consistent, nothing to confirm.</div>
+                        </div>
+                    }
                     <div className="memo-note">Nothing leaves this case file without your signature. Sift drafts and cites -- it doesn't act unsupervised.</div>
                 </div>
 

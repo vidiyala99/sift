@@ -1,0 +1,50 @@
+"""Implementations for the sift frontend component."""
+
+impl app.goDashboard -> None {
+    view = "dashboard";
+    loading = True;
+    result = root spawn GetDashboard();
+    dashboard = result.reports;
+    loading = False;
+}
+
+impl app.openReview(claim_id: str) -> None {
+    view = "review";
+    loading = True;
+    approved = False;
+    selected_source = "";
+    selected_statement = "";
+
+    src_result = root spawn GetSources();
+    sources = src_result.reports;
+
+    result = root spawn ClaimReview(claim_id=claim_id);
+    r = result.reports[0];
+    review = {
+        "claim_id": r.claim_id,
+        "has_conflict": r.has_conflict,
+        "conflict_topic": r.conflict_topic,
+        "facts": [
+            {
+                "topic": f.topic,
+                "statement": f.statement,
+                "source_name": f.source_name,
+                "source_kind": f.source_kind
+            }
+            for f in r.facts
+        ],
+        "action": r.action,
+        "answer": r.answer,
+        "draft": r.draft
+    };
+    loading = False;
+}
+
+impl app.selectCitation(source_name: str, statement: str) -> None {
+    selected_source = source_name;
+    selected_statement = statement;
+}
+
+impl app.approveSend -> None {
+    approved = True;
+}

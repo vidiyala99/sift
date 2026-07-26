@@ -1,0 +1,8 @@
+.venv/
+.superpowers/
+__pycache__/
+*.pyc
+.jac/
+node_modules/
+.vscode/
+.idea/

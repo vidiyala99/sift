@@ -13,18 +13,27 @@
   --trace-dark: #14171F;
 }
 
-body { margin: 0; background: #DED5BF; }
+body {
+  margin: 0;
+  background: #DED5BF;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
 
 .sift-app {
   font-family: 'IBM Plex Sans', sans-serif;
   color: var(--ink);
-  min-height: 100vh;
   max-width: 1180px;
-  margin: 0 auto;
+  width: 100%;
+  height: fit-content;
   background: var(--paper);
   box-shadow: 0 2px 4px rgba(30,34,48,0.06), 0 10px 30px rgba(30,34,48,0.09);
 }
 @media (max-width: 1180px) {
+  body { padding: 0; }
   .sift-app { box-shadow: none; }
 }
 .mono { font-family: 'IBM Plex Mono', monospace; }

@@ -100,6 +100,24 @@ def:pub app -> JsxElement {
         verify_before = selected_source_data["raw_text"];
     }
 
+    # --- graph layout (precomputed so the JSX below stays simple) ---
+    n_src = len(sources);
+    source_positions: list[dict] = [];
+    for (i, s) in enumerate(sources) {
+        x = 116 if n_src <= 1 else (20 + i * (192 / (n_src - 1)));
+        source_positions.append({"name": s["name"], "kind": s["kind"], "x": x});
+    }
+    source_x_map = {p["name"]: p["x"] for p in source_positions};
+
+    graph_facts = citation_facts[:4];
+    n_facts = len(graph_facts);
+    fact_positions: list[dict] = [];
+    for (i, f) in enumerate(graph_facts) {
+        x = 116 if n_facts <= 1 else (20 + i * (192 / (n_facts - 1)));
+        fact_positions.append({"x": x, "src_x": source_x_map.get(f["source_name"], 116)});
+    }
+    has_conflict = review.get("has_conflict", False);
+
     return
         <div className="sift-app">
             <div className="bar">
@@ -108,8 +126,42 @@ def:pub app -> JsxElement {
             </div>
             <div className="cols">
                 <div className="graph-pane">
-                    <div className="label">Sources on file</div>
-                    {[<div key={s["name"]} className="idx-row">{s["kind"]} <span className="idx-dot"></span></div> for s in sources]}
+                    <div className="label">Live traversal -- ClaimReview</div>
+                    <svg width="232" height="210" style={{"background": "var(--trace-dark)", "borderRadius": "8px"}}>
+                        {[
+                            <line key={"cl-" + p["name"]} x1="116" y1="26" x2={p["x"]} y2="86" stroke="#334155" strokeWidth="2"></line>
+                            for p in source_positions
+                        ]}
+                        {[
+                            <line key={"sf-" + str(i)} x1={fp["src_x"]} y1="98" x2={fp["x"]} y2="170" stroke={"#f59e0b" if has_conflict else "#334155"} strokeWidth="2"></line>
+                            for (i, fp) in enumerate(fact_positions)
+                        ]}
+                        <circle cx="116" cy="26" r="16" fill="#2563eb"></circle>
+                        <text x="116" y="30" textAnchor="middle" fontSize="9" fill="white">CLM</text>
+                        {[
+                            <circle key={"sn-" + p["name"]} cx={p["x"]} cy="86" r="12" fill="#4ade80"></circle>
+                            for p in source_positions
+                        ]}
+                        {[
+                            <text key={"st-" + p["name"]} x={p["x"]} y="90" textAnchor="middle" fontSize="7" fill="#0f172a">{p["kind"][0:4]}</text>
+                            for p in source_positions
+                        ]}
+                        {[
+                            <circle key={"fn-" + str(i)} cx={fp["x"]} cy="170" r={13 if has_conflict else 9} fill={"#f59e0b" if has_conflict else "#4ade80"}>
+                                {
+                                    has_conflict &&
+                                    <animate attributeName="r" values="13;17;13" dur="1.3s" repeatCount="indefinite"></animate>
+                                }
+                            </circle>
+                            for (i, fp) in enumerate(fact_positions)
+                        ]}
+                    </svg>
+                    <div className="tally">
+                        {len(facts)} facts on file<br/>
+                        {len(sources)} sources synced<br/>
+                        {has_conflict && <span className="hot">&#9888; {len(graph_facts)} facts tied to the dispute</span>}
+                        {not has_conflict && "no disputes found"}
+                    </div>
                     <div className="trace-box">
                         <div className="hd">agent trace -- ClaimReview</div>
                         <div>&#8594; visited {len(facts)} facts across {len(sources)} sources</div>

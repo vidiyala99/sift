@@ -13,7 +13,9 @@ A claims adjuster reviewing an incoming claim has to manually cross-reference th
 The whole application, frontend included, is written in Jac using its full-stack `cl {}` pathway (`jac create --kind fullstack`) -- there is no separate frontend framework or hand-written REST client.
 
 - **`endpoints.sv.jac`** -- the backend: `Source`/`Fact`/`Claim` nodes and edges form the graph. `IngestFixtures` extracts facts from raw documents via `by llm()` (byLLM), with a deterministic (non-LLM) substring check rejecting any extraction that isn't a verbatim quote from the source -- so citations can never be hallucinated. `ClaimReview` is the core walker: it traverses the graph from a `Claim` node to its linked facts and the global policy facts, runs a holistic `by llm()` conflict analysis across all of them, and then a second `by llm()` call chooses an action (`answer` / `flag_conflict` / `escalate`) -- genuinely agentic decision-making inside the walker, not a single wrapper call around a chat model.
-- **`frontend.cl.jac` / `frontend.impl.jac`** -- the client: a `cl {}` component (compiles to a real React/JSX bundle) that calls backend walkers directly (`root spawn ClaimReview(...)`) via the compiler-generated RPC layer. Landing page -> case-file dashboard -> review screen with a **live SVG graph** of the claim/source/fact traversal (pulsing orange on the disputed facts), an agent-trace panel, click-to-verify citations (highlighting the exact quoted span in the raw source), and a drafted follow-up message that requires an explicit "Approve & Send" -- never sent automatically.
+- **`frontend.cl.jac` / `frontend.impl.jac`** -- the client: `cl {}` components (compile to a real React/JSX bundle, real client-side routing via `@jac/runtime`'s `Router`) that call backend walkers directly (`root spawn ClaimReview(...)`) via the compiler-generated RPC layer. Three real routes -- `/`, `/dashboard`, `/review/:id` -- with a persistent nav bar, browser back/forward and deep-linking all working. The review screen has a **live SVG graph** of the claim/source/fact traversal that animates in following the walker's actual visit order (pulsing orange on the disputed facts), an agent-trace panel, click-to-verify citations (highlighting the exact quoted span in the raw source), and a drafted follow-up message that requires an explicit "Approve & Send" -- never sent automatically, and logged to a real `ApprovalLog` node when it is.
+- **Sensitive-content withholding** -- facts explicitly marked internal-only (or genuinely unrelated personal matters) are classified at extraction time and never surface in citations, answers, or drafts -- tracked and shown as "N sensitive fact(s) withheld," never silently dropped.
+- **Copilot** -- a text-chat panel grounded in the same facts as the rest of the app. It answers questions, and can trigger navigation or the Approve & Send action via natural language (e.g. "open the dishwasher case", "looks good, send it") -- it classifies intent and the *client* calls the same existing handlers a click would, so there's exactly one action pathway, not a second one bolted on.
 
 ## Design research
 
@@ -28,3 +30,15 @@ jac start --dev
 ```
 
 Requires an LLM backend configured in `jac.toml` (`OPENAI_API_KEY` env var for the default `gpt-4o-mini`, or a local Ollama model).
+
+## Testing
+
+Real end-to-end tests (Playwright, driving actual Chromium against the running app -- no mocks, real `by llm()` calls):
+
+```
+pip install -r sift/tests/requirements-test.txt
+playwright install chromium
+cd sift
+jac start --dev &         # server must be running first
+pytest tests/e2e -v
+```

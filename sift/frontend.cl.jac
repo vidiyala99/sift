@@ -3,7 +3,7 @@
 import "./styles.css";
 import from "@jac/runtime" { Router, Routes, Route, useNavigate, useParams, useLocation, Link }
 
-sv import from endpoints { GetDashboard, ClaimReview, GetSources, ApproveDraft }
+sv import from endpoints { GetDashboard, ClaimReview, GetSources, ApproveDraft, Copilot }
 
 def:pub app -> JsxElement {
     return
@@ -89,7 +89,11 @@ def Landing -> JsxElement {
 
 def Dashboard -> JsxElement {
     has dashboard: list[dict] = [],
-        loading: bool = False;
+        loading: bool = False,
+        copilot_open: bool = False,
+        copilot_messages: list[dict] = [],
+        copilot_input: str = "",
+        copilot_busy: bool = False;
 
     navigate = useNavigate();
 
@@ -98,6 +102,7 @@ def Dashboard -> JsxElement {
     }
 
     async def loadDashboard -> None;
+    async def sendCopilotMessage -> None;
 
     return
         <div className="sift-app page-fade">
@@ -144,6 +149,38 @@ def Dashboard -> JsxElement {
                     }
                 </div>
             </div>
+            <div className="copilot-widget">
+                <button className="copilot-toggle" onClick={lambda e: any { copilot_open = not copilot_open; }}>
+                    {"✕ Close" if copilot_open else "Ask Sift"}
+                </button>
+                {
+                    copilot_open &&
+                    <div className="copilot-panel">
+                        <div className="copilot-header">Ask Sift <span className="copilot-badge">beta</span></div>
+                        <div className="copilot-messages">
+                            {
+                                len(copilot_messages) == 0 &&
+                                <div className="copilot-hint">Try "open the water damage case" or "what's still open?"</div>
+                            }
+                            {[
+                                <div key={str(i)} className={"copilot-msg " + m["role"]}>{m["text"]}</div>
+                                for (i, m) in enumerate(copilot_messages)
+                            ]}
+                            {copilot_busy && <div className="copilot-msg assistant typing">thinking...</div>}
+                        </div>
+                        <div className="copilot-input-row">
+                            <input
+                                className="copilot-input"
+                                value={copilot_input}
+                                placeholder="Ask or say 'open CLM-4471'..."
+                                onChange={lambda e: any { copilot_input = e.target.value; }}
+                                onKeyDown={lambda e: any { if e.key == "Enter" { sendCopilotMessage(); } }}
+                            />
+                            <button className="copilot-send" onClick={lambda e: any { sendCopilotMessage(); }} disabled={copilot_busy}>&#8594;</button>
+                        </div>
+                    </div>
+                }
+            </div>
         </div>;
 }
 
@@ -158,7 +195,11 @@ def Review -> JsxElement {
         selected_statement: str = "",
         approved: bool = False,
         approved_at: str = "",
-        loading: bool = False;
+        loading: bool = False,
+        copilot_open: bool = False,
+        copilot_messages: list[dict] = [],
+        copilot_input: str = "",
+        copilot_busy: bool = False;
 
     can with entry {
         openReview(claim_id);
@@ -167,6 +208,7 @@ def Review -> JsxElement {
     async def openReview(claim_id: str) -> None;
     async def selectCitation(source_name: str, statement: str) -> None;
     async def approveSend -> None;
+    async def sendCopilotMessage(claim_id: str) -> None;
 
     if loading {
         return
@@ -339,6 +381,38 @@ def Review -> JsxElement {
                         </div>
                     }
                 </div>
+            </div>
+            <div className="copilot-widget">
+                <button className="copilot-toggle" onClick={lambda e: any { copilot_open = not copilot_open; }}>
+                    {"✕ Close" if copilot_open else "Ask Sift"}
+                </button>
+                {
+                    copilot_open &&
+                    <div className="copilot-panel">
+                        <div className="copilot-header">Ask Sift <span className="copilot-badge">beta</span></div>
+                        <div className="copilot-messages">
+                            {
+                                len(copilot_messages) == 0 &&
+                                <div className="copilot-hint">Try "what's the conflict about?" or "approve it"</div>
+                            }
+                            {[
+                                <div key={str(i)} className={"copilot-msg " + m["role"]}>{m["text"]}</div>
+                                for (i, m) in enumerate(copilot_messages)
+                            ]}
+                            {copilot_busy && <div className="copilot-msg assistant typing">thinking...</div>}
+                        </div>
+                        <div className="copilot-input-row">
+                            <input
+                                className="copilot-input"
+                                value={copilot_input}
+                                placeholder="Ask about this case, or say 'approve it'..."
+                                onChange={lambda e: any { copilot_input = e.target.value; }}
+                                onKeyDown={lambda e: any { if e.key == "Enter" { sendCopilotMessage(claim_id); } }}
+                            />
+                            <button className="copilot-send" onClick={lambda e: any { sendCopilotMessage(claim_id); }} disabled={copilot_busy}>&#8594;</button>
+                        </div>
+                    </div>
+                }
             </div>
         </div>;
 }

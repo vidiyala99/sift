@@ -153,6 +153,29 @@ sem compose_answer = "Write a short (2-4 sentence) explanation for a claims adju
 def draft_clarification(claim_description: str, facts_summary: str) -> str by llm();
 sem draft_clarification = "Draft a short, polite message to the policyholder asking them to confirm the one detail that would resolve the coverage ambiguity described. 2-3 sentences, plain language, no legal jargon.";
 
+"""Shared traversal: gather every non-sensitive fact relevant to a claim (global
+policy facts + this claim's own facts). Used by both ClaimReview and Copilot
+so the two don't drift on what counts as grounding context."""
+def gather_claim_facts(claim: Claim) -> list[Fact] {
+    claim_facts = [claim -->][?:Fact];
+    all_gathered: list[Fact] = [];
+    for src in [root -->][?:Source, kind == "policy"] {
+        for f in [src -->][?:Fact] {
+            all_gathered.append(f);
+        }
+    }
+    for f in claim_facts {
+        if f not in all_gathered {
+            all_gathered.append(f);
+        }
+    }
+    return [f for f in all_gathered if not f.sensitive];
+}
+
+def summarize_facts(facts: list[Fact]) -> str {
+    return "\n".join([f"[{f.source_name}] ({f.topic}): {f.statement}" for f in facts]);
+}
+
 walker:pub ClaimReview {
     has claim_id: str = "CLM-4471",
         result: ReviewResult = ReviewResult(
@@ -167,25 +190,14 @@ walker:pub ClaimReview {
 
     can review with Claim entry {
         claim_facts = [-->][?:Fact];
-
-        all_gathered: list[Fact] = [];
-        for src in [root -->][?:Source, kind == "policy"] {
-            for f in [src -->][?:Fact] {
-                all_gathered.append(f);
-            }
-        }
-        for f in claim_facts {
-            if f not in all_gathered {
-                all_gathered.append(f);
-            }
-        }
+        total_claim_and_policy = len(claim_facts) + len([f for src in [root -->][?:Source, kind == "policy"] for f in [src -->][?:Fact]]);
 
         # Sensitive facts are tracked but never surfaced to the LLM calls,
         # the citation list, or the policyholder-facing draft.
-        all_relevant = [f for f in all_gathered if not f.sensitive];
-        withheld_count = len(all_gathered) - len(all_relevant);
+        all_relevant = gather_claim_facts(here);
+        withheld_count = total_claim_and_policy - len(all_relevant);
 
-        facts_summary = "\n".join([f"[{f.source_name}] ({f.topic}): {f.statement}" for f in all_relevant]);
+        facts_summary = summarize_facts(all_relevant);
 
         analysis = analyze_conflict(facts_summary);
         has_conflict = analysis.has_conflict;
@@ -275,5 +287,51 @@ walker:pub GetApprovalLog {
         for a in [-->][?:ApprovalLog] {
             report {"claim_id": a.claim_id, "draft_text": a.draft_text, "approved_at": a.approved_at, "approver": a.approver};
         }
+    }
+}
+
+# --- Copilot ---------------------------------------------------------------
+# Text-chat copilot: answers questions grounded in the open claim's facts (same
+# groundedness rules as the rest of the app -- no free invention) and classifies
+# whether the message is actually a request to navigate or to approve/send. It
+# never performs the action itself -- it only reports the intent; the client
+# triggers the SAME existing handlers (approveSend, navigate) a human clicking
+# would use. One action type, two ways to trigger it -- not a new capability.
+
+obj CopilotResponse {
+    has reply: str,
+        action: str,
+        target_claim_id: str;
+}
+
+def copilot_respond(message: str, cases_summary: str, current_claim_context: str) -> CopilotResponse by llm();
+sem copilot_respond = "You are Sift's copilot, embedded in an insurance case-file app. 'cases_summary' lists every open case as 'id: description'. 'current_claim_context' is empty if the user is on the case ledger (no claim open), or contains the open claim's description and known facts if they're reviewing one. Interpret the user's message: (1) If they're asking to open/view a different case by name or id, set action='navigate_claim' and target_claim_id to the matching id from cases_summary (exact id, not the description). (2) If they're asking to go back to the case list/ledger/home, set action='navigate_dashboard'. (3) If a claim is open (current_claim_context is non-empty) and they're asking to approve/send/confirm the drafted memo (e.g. 'approve it', 'send it', 'looks good, send'), set action='approve'. (4) Otherwise set action='answer' and just respond conversationally in 1-3 sentences, grounded ONLY in current_claim_context if it is given -- never invent a fact that isn't there. Always fill 'reply' with a short, natural response regardless of which action you chose (e.g. for 'approve' say something like 'Sending that now.'). target_claim_id must be empty string unless action is navigate_claim.";
+sem CopilotResponse.action = "Exactly one of: answer, approve, navigate_dashboard, navigate_claim.";
+sem CopilotResponse.target_claim_id = "The matching case id, only when action is navigate_claim; empty string otherwise.";
+
+"""Text-chat copilot. Grounds answers in the same facts the rest of the app
+uses (sensitive facts excluded), and classifies navigation/approval intent so
+the client can trigger the existing handlers -- this walker never sends or
+navigates on its own."""
+walker:pub Copilot {
+    has message: str = "",
+        claim_id: str = "",
+        reports: list[CopilotResponse] = [];
+
+    can run with Root entry {
+        cases_summary = "\n".join([f"{c.claim_id}: {c.description}" for c in [-->][?:Claim]]);
+
+        current_claim_context = "";
+        if self.claim_id {
+            matches = [-->][?:Claim, claim_id == self.claim_id];
+            if len(matches) > 0 {
+                claim = matches[0];
+                facts = gather_claim_facts(claim);
+                current_claim_context = f"Claim {claim.claim_id}: {claim.description}\nFacts:\n{summarize_facts(facts)}";
+            }
+        }
+
+        result = copilot_respond(self.message, cases_summary, current_claim_context);
+        report result;
     }
 }

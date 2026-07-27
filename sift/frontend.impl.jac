@@ -7,6 +7,28 @@ impl Dashboard.loadDashboard -> None {
     loading = False;
 }
 
+impl Dashboard.sendCopilotMessage -> None {
+    if not copilot_input.strip() {
+        return;
+    }
+    user_msg = copilot_input;
+    copilot_messages = copilot_messages + [{"role": "user", "text": user_msg}];
+    copilot_input = "";
+    copilot_busy = True;
+
+    try {
+        result = root spawn Copilot(message=user_msg, claim_id="");
+        r = result.reports[0];
+        copilot_messages = copilot_messages + [{"role": "assistant", "text": r.reply}];
+        if r.action == "navigate_claim" and r.target_claim_id {
+            navigate(f"/review/{r.target_claim_id}");
+        }
+    } except Exception as e {
+        copilot_messages = copilot_messages + [{"role": "assistant", "text": f"Sorry, something went wrong: {e}"}];
+    }
+    copilot_busy = False;
+}
+
 impl Review.openReview(claim_id: str) -> None {
     loading = True;
     approved = False;
@@ -59,4 +81,30 @@ impl Review.approveSend -> None {
     log_entry = result.reports[0];
     approved_at = log_entry["approved_at"];
     approved = True;
+}
+
+impl Review.sendCopilotMessage(claim_id: str) -> None {
+    if not copilot_input.strip() {
+        return;
+    }
+    user_msg = copilot_input;
+    copilot_messages = copilot_messages + [{"role": "user", "text": user_msg}];
+    copilot_input = "";
+    copilot_busy = True;
+
+    try {
+        result = root spawn Copilot(message=user_msg, claim_id=claim_id);
+        r = result.reports[0];
+        copilot_messages = copilot_messages + [{"role": "assistant", "text": r.reply}];
+        if r.action == "approve" and review.get("draft") and not approved {
+            approveSend();
+        } elif r.action == "navigate_dashboard" {
+            navigate("/dashboard");
+        } elif r.action == "navigate_claim" and r.target_claim_id and r.target_claim_id != claim_id {
+            navigate(f"/review/{r.target_claim_id}");
+        }
+    } except Exception as e {
+        copilot_messages = copilot_messages + [{"role": "assistant", "text": f"Sorry, something went wrong: {e}"}];
+    }
+    copilot_busy = False;
 }

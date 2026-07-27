@@ -105,6 +105,7 @@ def Dashboard -> JsxElement {
     async def sendCopilotMessage -> None;
 
     return
+        <>
         <div className="sift-app page-fade">
             <div className="page-head">
                 <div className="label">Open cases</div>
@@ -149,9 +150,10 @@ def Dashboard -> JsxElement {
                     }
                 </div>
             </div>
+        </div>
             <div className="copilot-widget">
                 <button className="copilot-toggle" onClick={lambda e: any { copilot_open = not copilot_open; }}>
-                    {"✕ Close" if copilot_open else "Ask Sift"}
+                    {"✕ Close" if copilot_open else "💬 Ask Sift"}
                 </button>
                 {
                     copilot_open &&
@@ -181,7 +183,7 @@ def Dashboard -> JsxElement {
                     </div>
                 }
             </div>
-        </div>;
+        </>;
 }
 
 def Review -> JsxElement {
@@ -270,6 +272,7 @@ def Review -> JsxElement {
     n_src_nodes = len(source_positions);
 
     return
+        <>
         <div className="sift-app page-fade">
             <div className="cols">
                 <div className="graph-pane">
@@ -382,9 +385,10 @@ def Review -> JsxElement {
                     }
                 </div>
             </div>
+        </div>
             <div className="copilot-widget">
                 <button className="copilot-toggle" onClick={lambda e: any { copilot_open = not copilot_open; }}>
-                    {"✕ Close" if copilot_open else "Ask Sift"}
+                    {"✕ Close" if copilot_open else "💬 Ask Sift"}
                 </button>
                 {
                     copilot_open &&
@@ -414,5 +418,5 @@ def Review -> JsxElement {
                     </div>
                 }
             </div>
-        </div>;
+        </>;
 }

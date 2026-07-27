@@ -284,13 +284,13 @@ def Review -> JsxElement {
                             for (i, fp) in enumerate(fact_positions)
                         ]}
                         <circle cx="116" cy="26" r="16" fill="#2563eb" className="graph-in"></circle>
-                        <text x="116" y="30" textAnchor="middle" fontSize="9" fill="white" className="graph-in">CLM</text>
+                        <text x="116" y="30" textAnchor="middle" fontSize="10" fill="white" className="graph-in">CLM</text>
                         {[
                             <circle key={"sn-" + p["name"]} cx={p["x"]} cy="86" r="12" fill="#4ade80" className="graph-in" style={{"animationDelay": f"{100 + i * 120}ms"}}></circle>
                             for (i, p) in enumerate(source_positions)
                         ]}
                         {[
-                            <text key={"st-" + p["name"]} x={p["x"]} y="90" textAnchor="middle" fontSize="7" fill="#0f172a" className="graph-in" style={{"animationDelay": f"{100 + i * 120}ms"}}>{p["kind"][0:4]}</text>
+                            <text key={"st-" + p["name"]} x={p["x"]} y="90" textAnchor="middle" fontSize="9" fill="#0f172a" className="graph-in" style={{"animationDelay": f"{100 + i * 120}ms"}}>{p["kind"][0:4]}</text>
                             for (i, p) in enumerate(source_positions)
                         ]}
                         {[

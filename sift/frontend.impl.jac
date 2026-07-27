@@ -4,6 +4,8 @@ impl Dashboard.loadDashboard -> None {
     loading = True;
     result = root spawn GetDashboard();
     dashboard = result.reports;
+    stats_result = root spawn GetStats();
+    stats = stats_result.reports[0];
     loading = False;
 }
 
@@ -43,24 +45,34 @@ impl Review.openReview(claim_id: str) -> None {
 
         result = root spawn ClaimReview(claim_id=claim_id);
         r = result.reports[0];
+        facts_list = [
+            {
+                "topic": f.topic,
+                "statement": f.statement,
+                "source_name": f.source_name,
+                "source_kind": f.source_kind
+            }
+            for f in r.facts
+        ];
         review = {
             "claim_id": r.claim_id,
             "has_conflict": r.has_conflict,
             "conflict_topic": r.conflict_topic,
-            "facts": [
-                {
-                    "topic": f.topic,
-                    "statement": f.statement,
-                    "source_name": f.source_name,
-                    "source_kind": f.source_kind
-                }
-                for f in r.facts
-            ],
+            "facts": facts_list,
             "action": r.action,
             "answer": r.answer,
             "draft": r.draft,
             "withheld_count": r.withheld_count
         };
+
+        # Default Source Verify to the first citable fact so it never renders
+        # its empty "click a citation" state on load.
+        citation_words = ["gradual", "sudden", "seepage", "rupture"];
+        citable = [f for f in facts_list if any(w in f["statement"].lower() for w in citation_words)];
+        if len(citable) > 0 {
+            selected_source = citable[0]["source_name"];
+            selected_statement = citable[0]["statement"];
+        }
     } except Exception as e {
         review = {"error": f"{e}"};
     }
@@ -73,14 +85,28 @@ impl Review.selectCitation(source_name: str, statement: str) -> None {
 }
 
 impl Review.approveSend -> None {
+    final_text = draft_override if edited else review.get("draft", "");
     result = root spawn ApproveDraft(
         claim_id=review.get("claim_id", ""),
-        draft_text=review.get("draft", ""),
-        approver="adjuster"
+        draft_text=final_text,
+        approver="adjuster",
+        edited=edited
     );
     log_entry = result.reports[0];
     approved_at = log_entry["approved_at"];
     approved = True;
+}
+
+impl Review.rejectDraft -> None {
+    final_text = draft_override if edited else review.get("draft", "");
+    result = root spawn RejectDraft(
+        claim_id=review.get("claim_id", ""),
+        draft_text=final_text,
+        approver="adjuster"
+    );
+    log_entry = result.reports[0];
+    approved_at = log_entry["approved_at"];
+    rejected = True;
 }
 
 impl Review.sendCopilotMessage(claim_id: str) -> None {

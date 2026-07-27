@@ -84,6 +84,8 @@ walker:pub IngestFixtures {
             ("Claim_CLM-4471.pdf", "claim", "fixtures/claim.md", "CLM-4471"),
             ("Call_and_inspection_notes.txt", "call_notes", "fixtures/call_notes.md", "CLM-4471"),
             ("Claim_CLM-2210.pdf", "claim", "fixtures/claim2.md", "CLM-2210"),
+            ("Slack -- #claims-team.txt", "slack", "fixtures/slack_thread.md", "CLM-2210"),
+            ("Granola -- Weekly Claims Sync.txt", "meeting_notes", "fixtures/meeting_notes.md", "CLM-2210"),
         ];
 
         for (name, kind, relpath, owning_claim) in sources {
@@ -245,6 +247,21 @@ walker:pub GetDashboard {
     }
 }
 
+"""Real aggregate counts for the dashboard stat row -- no placeholder numbers, everything here is derived from the actual graph."""
+walker:pub GetStats {
+    has reports: list[dict] = [];
+
+    can run with Root entry {
+        all_sources = [-->][?:Source];
+        total_facts = 0;
+        for s in all_sources {
+            total_facts += len([s -->][?:Fact]);
+        }
+        claims = [-->][?:Claim];
+        report {"sources": len(all_sources), "facts": total_facts, "cases": len(claims)};
+    }
+}
+
 """Return every Source node's raw text, for the click-to-verify panel."""
 walker:pub GetSources {
     has reports: list[dict] = [];
@@ -262,11 +279,28 @@ node ApprovalLog {
     has claim_id: str,
         draft_text: str,
         approved_at: str,
-        approver: str;
+        approver: str,
+        status: str = "approved",
+        edited: bool = False;
 }
 
-"""Persist an approval event -- the real record backing the memo's signature line. Nothing is ever auto-logged as approved; this only runs when a human clicks Approve & Send."""
+"""Persist an approval event -- the real record backing the memo's signature line. Nothing is ever auto-logged as approved; this only runs when a human clicks Approve & Send. 'edited' marks whether the adjuster changed the drafted text before sending."""
 walker:pub ApproveDraft {
+    has claim_id: str = "",
+        draft_text: str = "",
+        approver: str = "adjuster",
+        edited: bool = False,
+        reports: list[dict] = [];
+
+    can run with Root entry {
+        ts = datetime.datetime.now().isoformat(timespec="seconds");
+        here ++> ApprovalLog(claim_id=self.claim_id, draft_text=self.draft_text, approved_at=ts, approver=self.approver, status="approved", edited=self.edited);
+        report {"approved_at": ts, "claim_id": self.claim_id, "approver": self.approver, "status": "approved", "edited": self.edited};
+    }
+}
+
+"""Persist a rejection event -- the adjuster reviewed the drafted memo and declined to send it. Distinct from approval so the audit trail shows a human made an active decision either way."""
+walker:pub RejectDraft {
     has claim_id: str = "",
         draft_text: str = "",
         approver: str = "adjuster",
@@ -274,8 +308,8 @@ walker:pub ApproveDraft {
 
     can run with Root entry {
         ts = datetime.datetime.now().isoformat(timespec="seconds");
-        here ++> ApprovalLog(claim_id=self.claim_id, draft_text=self.draft_text, approved_at=ts, approver=self.approver);
-        report {"approved_at": ts, "claim_id": self.claim_id, "approver": self.approver};
+        here ++> ApprovalLog(claim_id=self.claim_id, draft_text=self.draft_text, approved_at=ts, approver=self.approver, status="rejected", edited=False);
+        report {"approved_at": ts, "claim_id": self.claim_id, "approver": self.approver, "status": "rejected"};
     }
 }
 
@@ -285,7 +319,7 @@ walker:pub GetApprovalLog {
 
     can run with Root entry {
         for a in [-->][?:ApprovalLog] {
-            report {"claim_id": a.claim_id, "draft_text": a.draft_text, "approved_at": a.approved_at, "approver": a.approver};
+            report {"claim_id": a.claim_id, "draft_text": a.draft_text, "approved_at": a.approved_at, "approver": a.approver, "status": a.status, "edited": a.edited};
         }
     }
 }
